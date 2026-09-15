@@ -36,7 +36,7 @@ Drop the real Grounds Guys logo into `public/` as `logo.svg` or `logo.png` and t
 
 ## Assets
 
-`public/` holds the client-supplied photography (`service-*.jpg`, `before-lawn.jpg`, `after-lawn.jpg`, `team-crew.jpg`, `cta-wide-shot.jpg`) and the hero cinemagraph. `hero-video.mp4` is the supplied aerial shot transcoded to 1080p and ping-ponged so the loop is seamless; `hero-poster.jpg` is its first frame.
+`public/` holds the client-supplied photography (`service-*.jpg`, `before-lawn.jpg`, `after-lawn.jpg`, `team-crew.jpg`, `cta-wide-shot.jpg`) and the hero cinemagraph. `hero-video.mp4` is the supplied aerial shot transcoded to 720p and ping-ponged so the loop is seamless; `hero-poster.jpg` is its first frame.
 
 ## Where things live
 
