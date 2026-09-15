@@ -33,7 +33,7 @@ export default function FinalCta() {
 
   return (
     <section className="relative isolate overflow-hidden" aria-labelledby="final-h">
-      <Image src="/cta-wide-shot.jpg" alt="" fill sizes="100vw" className="object-cover" />
+      <Image src="/cta-wide-shot.jpg" alt="" fill sizes="(max-width: 768px) 100vw, 1440px" className="object-cover" />
       <div
         aria-hidden
         className="absolute inset-0"

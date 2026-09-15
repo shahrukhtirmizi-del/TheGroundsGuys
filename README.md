@@ -11,6 +11,16 @@ npm run dev
 
 `npm run build` produces the production build. Both `dev` and `build` first copy the MapLibre worker into `public/maplibre` (see `scripts/copy-maplibre-worker.mjs`); that folder is generated and git-ignored.
 
+## Service-area map
+
+The map is shown first as a pre-rendered image (`public/map-static.webp`) with live DOM pins and popups, and the real MapLibre map is only created when a visitor zooms, drags or checks an address. That keeps WebGL setup (about a second of main-thread time on integrated graphics) off the scroll path. After changing the style (`src/lib/map-style.ts`), the towns or the service polygon (`src/lib/site.ts`), regenerate the image:
+
+```bash
+node --experimental-strip-types scripts/render-map.mjs
+```
+
+It drives the locally installed Edge (or Chrome with `BROWSER_CHANNEL=chrome`) through `playwright-core`; no browser download is needed.
+
 ## Lead delivery (the free-estimate form)
 
 The form posts to `/api/estimate`, which validates the request and delivers it by whichever channel is configured. Copy `.env.example` and set **one** of:
@@ -32,6 +42,7 @@ Drop the real Grounds Guys logo into `public/` as `logo.svg` or `logo.png` and t
 
 - `src/lib/site.ts`: every piece of business content (services, FAQ, reviews, towns, hours)
 - `src/components/sections/*`: one file per home-page section, in page order
-- `src/components/fx/OrbitHeading.tsx`: the canvas ring of orbiting photo plates
+- `src/components/fx/OrbitHeading.tsx`: the canvas ring of orbiting photo plates (geometry checked by `scripts/orbit-fit.mjs` so plates never cover the headline)
+- `src/components/sections/StaticMap.tsx` + `MapView.tsx`: the pre-rendered map and the live MapLibre map it upgrades to
 - `src/components/ui/*`: reveal, count-up, stars, tilt card, modal, scroll-words
 - `src/app/api/geocode`: address lookup proxy for the service-area check (OpenStreetMap Nominatim)

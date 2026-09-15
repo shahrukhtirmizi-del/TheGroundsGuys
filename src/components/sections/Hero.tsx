@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowDownIcon, PhoneIcon } from "@phosphor-icons/react";
 import CountUp from "../ui/CountUp";
@@ -13,10 +14,29 @@ import { scrollToHash } from "../ui/hooks";
  * Copy is left-aligned; the trust numbers sit in their own strip beneath.
  */
 export default function Hero() {
+  const video = useRef<HTMLVideoElement>(null);
+
+  // decoding 1080p video is the most expensive thing on the page, so it only
+  // runs while the hero is actually on screen
+  useEffect(() => {
+    const v = video.current;
+    if (!v) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) v.play().catch(() => {});
+        else v.pause();
+      },
+      { threshold: 0.05 }
+    );
+    io.observe(v);
+    return () => io.disconnect();
+  }, []);
+
   return (
     <section className="relative" aria-label="Introduction">
       <div className="relative isolate min-h-[100dvh] overflow-hidden" style={{ background: "var(--green-deeper)" }}>
         <video
+          ref={video}
           className="absolute inset-0 h-full w-full object-cover"
           autoPlay
           muted

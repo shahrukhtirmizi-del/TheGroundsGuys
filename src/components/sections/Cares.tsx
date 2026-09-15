@@ -20,7 +20,7 @@ export default function Cares() {
 
         <div className="mt-16 grid items-stretch gap-10 md:mt-24 md:grid-cols-[1fr_1.05fr] md:gap-14">
           <Reveal className="relative aspect-[4/3] overflow-hidden rounded-[var(--r-card)] md:aspect-auto md:min-h-[560px]" style={{ boxShadow: "0 40px 80px -30px rgba(0,0,0,0.6)" }}>
-            <Image src="/team-crew.jpg" alt="The Grounds Guys of Davenport crew beside their trailer" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+            <Image src="/team-crew.jpg" alt="The Grounds Guys of Davenport crew beside their trailer" fill sizes="(max-width: 768px) 100vw, 640px" className="object-cover" />
           </Reveal>
 
           <div>

@@ -4,14 +4,15 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { CheckCircleIcon, MagnifyingGlassIcon, MapPinIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import Reveal from "../ui/Reveal";
+import StaticMap from "./StaticMap";
 import { SITE, TOWNS } from "@/lib/site";
 import { insideServiceArea, nearestTown, zipInServiceArea } from "@/lib/geo";
 import type { MapHandle } from "./MapView";
 
-const MapView = dynamic(() => import("./MapView"), {
-  ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse" style={{ background: "var(--green-soft)" }} />,
-});
+const loadMapView = () => import("./MapView");
+const MapView = dynamic(loadMapView, { ssr: false });
+
+type Pending = { kind: "check"; lat: number; lng: number; inside: boolean; label: string } | { kind: "town"; name: string } | { kind: "zoom"; delta: number };
 
 type Result =
   | { state: "idle" }
@@ -21,9 +22,12 @@ type Result =
   | { state: "error"; message: string };
 
 /**
- * Where we work. A real map with the four towns pinned and the boundary
- * drawn, plus an address check that geocodes the entry, flies the map to
- * it and says plainly whether it is covered.
+ * Where we work. The four towns pinned on a pre-rendered map with the
+ * boundary drawn, plus an address check that geocodes the entry, flies the
+ * map to it and says plainly whether it is covered. The real MapLibre map is
+ * only created once the visitor zooms, drags or checks an address (its WebGL
+ * setup is the single most expensive thing on the page), and the bundle is
+ * warmed as soon as the address field gets focus.
  */
 export default function ServiceArea() {
   const map = useRef<MapHandle>(null);
@@ -31,6 +35,36 @@ export default function ServiceArea() {
   const [result, setResult] = useState<Result>({ state: "idle" });
   const [activeTown, setActiveTown] = useState<string | null>(null);
   const onTownActive = useCallback((name: string | null) => setActiveTown(name), []);
+  const [live, setLive] = useState(false);
+  const [liveReady, setLiveReady] = useState(false);
+  const pending = useRef<Pending | null>(null);
+
+  const runPending = useCallback(() => {
+    const p = pending.current;
+    const m = map.current;
+    if (!p || !m) return;
+    pending.current = null;
+    if (p.kind === "check") m.showCheck(p.lat, p.lng, p.inside, p.label);
+    if (p.kind === "town") m.focusTown(p.name);
+    if (p.kind === "zoom") m.zoomBy(p.delta);
+  }, []);
+
+  const onReady = useCallback(() => {
+    setLiveReady(true);
+    runPending();
+  }, [runPending]);
+
+  /** Queue an action for the live map, creating it if this is the first interaction. */
+  function withLiveMap(action: Pending) {
+    if (live && liveReady && map.current) {
+      if (action.kind === "check") map.current.showCheck(action.lat, action.lng, action.inside, action.label);
+      if (action.kind === "town") map.current.focusTown(action.name);
+      if (action.kind === "zoom") map.current.zoomBy(action.delta);
+      return;
+    }
+    pending.current = action;
+    setLive(true);
+  }
 
   useEffect(() => {
     map.current?.highlight(activeTown);
@@ -48,7 +82,7 @@ export default function ServiceArea() {
     // a bare ZIP we already know is an instant answer
     const zipHit = zipInServiceArea(q);
     if (zipHit && /^\d{5}$/.test(q) && zipHit.town) {
-      map.current?.showCheck(zipHit.town.lat, zipHit.town.lng, true, `${zipHit.zip}`);
+      withLiveMap({ kind: "check", lat: zipHit.town.lat, lng: zipHit.town.lng, inside: true, label: zipHit.zip });
       setResult({ state: "in", label: `ZIP ${zipHit.zip}`, town: zipHit.town.name });
       return;
     }
@@ -67,7 +101,7 @@ export default function ServiceArea() {
       const { lat, lng, label } = data.result;
       const inside = insideServiceArea(lat, lng) || Boolean(zipHit?.town);
       const town = nearestTown(lat, lng).name;
-      map.current?.showCheck(lat, lng, inside, label);
+      withLiveMap({ kind: "check", lat, lng, inside, label });
       const short = label.split(",").slice(0, 3).join(",");
       setResult(inside ? { state: "in", label: short, town } : { state: "out", label: short, town });
     } catch {
@@ -78,6 +112,7 @@ export default function ServiceArea() {
   function reset() {
     setQuery("");
     setResult({ state: "idle" });
+    pending.current = null;
     map.current?.reset();
   }
 
@@ -117,6 +152,7 @@ export default function ServiceArea() {
                     placeholder="123 Main St, Davenport or 33837"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
+                    onFocus={() => void loadMapView()}
                     className="field !pl-11"
                   />
                 </div>
@@ -167,7 +203,7 @@ export default function ServiceArea() {
                 <li key={t.name}>
                   <button
                     type="button"
-                    onClick={() => map.current?.focusTown(t.name)}
+                    onClick={() => withLiveMap({ kind: "town", name: t.name })}
                     onMouseEnter={() => setActiveTown(t.name)}
                     onMouseLeave={() => setActiveTown(null)}
                     className="flex w-full items-center gap-2.5 rounded-[var(--r-tile)] px-4 py-3.5 text-left text-[15px] font-semibold transition-[background-color,transform,box-shadow] duration-400 hover:-translate-y-0.5"
@@ -196,9 +232,26 @@ export default function ServiceArea() {
 
           {/* right: the map */}
           <Reveal delay={120} className="relative min-h-[380px] overflow-hidden rounded-[var(--r-card)] md:min-h-[520px]" style={{ boxShadow: "var(--shadow-lift)", border: "1px solid var(--line)" }}>
-            <div className="absolute inset-0">
-              <MapView ref={map} onTownActive={onTownActive} />
-            </div>
+            {/* the pre-rendered map stays underneath until the live one has loaded */}
+            <StaticMap
+              activeTown={activeTown}
+              onTownActive={onTownActive}
+              onTownClick={(name) => withLiveMap({ kind: "town", name })}
+              onInteract={(a) => withLiveMap(a === "in" ? { kind: "zoom", delta: 1 } : a === "out" ? { kind: "zoom", delta: -1 } : { kind: "zoom", delta: 0 })}
+            />
+            {live && (
+              <div
+                className="absolute inset-0 transition-opacity duration-500"
+                style={{ opacity: liveReady ? 1 : 0, pointerEvents: liveReady ? "auto" : "none" }}
+              >
+                <MapView ref={map} onTownActive={onTownActive} onReady={onReady} />
+              </div>
+            )}
+            {live && !liveReady && (
+              <p className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full px-4 py-2 text-[13px] font-semibold" style={{ background: "var(--white)", color: "var(--green)", boxShadow: "var(--shadow-soft)" }}>
+                Loading map&hellip;
+              </p>
+            )}
           </Reveal>
         </div>
       </div>

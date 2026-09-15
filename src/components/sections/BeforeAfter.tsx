@@ -34,9 +34,9 @@ export default function BeforeAfter() {
             className="group relative aspect-[4/3] w-full select-none overflow-hidden rounded-[var(--r-card)] md:aspect-[16/9]"
             style={{ boxShadow: "var(--shadow-lift)" }}
           >
-            <Image src="/after-lawn.jpg" alt="The lawn after The Grounds Guys: striped, edged and full" fill priority={false} sizes="(max-width: 1280px) 100vw, 1216px" className="object-cover" />
+            <Image src="/after-lawn.jpg" alt="The lawn after The Grounds Guys: striped, edged and full" fill priority={false} sizes="(max-width: 768px) 100vw, 1200px" className="object-cover" />
             <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-              <Image src="/before-lawn.jpg" alt="The lawn before: patchy, overgrown and full of weeds" fill sizes="(max-width: 1280px) 100vw, 1216px" className="object-cover" />
+              <Image src="/before-lawn.jpg" alt="The lawn before: patchy, overgrown and full of weeds" fill sizes="(max-width: 768px) 100vw, 1200px" className="object-cover" />
             </div>
 
             {/* labels */}

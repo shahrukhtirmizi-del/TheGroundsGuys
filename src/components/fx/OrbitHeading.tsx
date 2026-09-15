@@ -6,36 +6,40 @@ import { useEffect, useRef } from "react";
  * An oversized two-line headline ringed by orbiting photo plates.
  *
  * A tilted ring of rounded 1:1 plates is projected with a simple perspective
- * divide and drawn back-to-front (painter's algorithm); the headline layer is
- * painted at the moment the ring crosses behind the text, so plates pass in
- * front of the words on the near side and behind them on the far side. Each
- * plate is a canvas texture built once from a photograph: cover-fit, then a
- * warm wash so the photography sits inside the page palette instead of
- * shouting over it. The far side of each plate is a deeper, greener version.
+ * divide and drawn back-to-front (painter's algorithm). Each plate is a canvas
+ * texture built once from a photograph: cover-fit, a warm wash so the
+ * photography sits inside the page palette, rounded corners baked in so no
+ * clip path is needed per frame. The far side of each plate is a deeper,
+ * greener version.
  *
- * Holds a single still frame under prefers-reduced-motion and stops
- * rendering when scrolled out of view.
+ * The ring is sized so the headline sits fully inside it: plates pass below
+ * the words on the near side and above them on the far side, never across
+ * them (geometry checked with scripts/orbit-fit.mjs). Because they never
+ * overlap, the headline is ordinary DOM text laid over the canvas, and the
+ * canvas only ever draws the twelve plates. Renders at 30fps at 1x DPR, holds
+ * a still frame under prefers-reduced-motion and stops when scrolled away.
  */
 
 const DW = 1600;
 const DH = 900;
-const DASP = DW / DH;
 
 const RING = {
   cx: 800,
-  cy: 452,
-  a: 385, // projected semi-major axis
-  ratio: 0.492, // semi-minor / semi-major
-  axis: 25.5, // screen angle of the major axis, degrees
+  cy: 450,
+  a: 620, // projected semi-major axis
+  ratio: 0.55, // semi-minor / semi-major
+  axis: 8, // screen angle of the major axis, degrees
   n: 12, // plates
-  tile: 187, // plate side in ring units where R = a
+  tile: 170, // plate side in ring units where R = a
   radius: 0.22, // corner radius as a fraction of the side
   dist: 13, // camera distance in ring radii
   phase: 93,
 };
 
+const TEXT_W = 940 / DW; // headline width as a fraction of the frame; clears the ring
 const DUR = 30; // seconds per revolution
-const TS = 420; // plate texture resolution
+const FRAME_MS = 1000 / 30; // the ring turns slowly; 30fps is indistinguishable and half the work
+const TS = 360; // plate texture resolution
 
 export default function OrbitHeading({
   lineOne,
@@ -68,7 +72,6 @@ export default function OrbitHeading({
     let K = 1;
     let OX = 0;
     let OY = 0;
-    let headLayer: HTMLCanvasElement | null = null;
 
     const front: HTMLCanvasElement[] = [];
     const back: HTMLCanvasElement[] = [];
@@ -91,34 +94,36 @@ export default function OrbitHeading({
     const V = [-Math.sin(ax) * cf, Math.cos(ax) * cf, sf];
     const AXIS = [U[1] * V[2] - U[2] * V[1], U[2] * V[0] - U[0] * V[2], U[0] * V[1] - U[1] * V[0]];
 
-    function roundRectPath(x: CanvasRenderingContext2D, w: number, h: number, r: number) {
+    function roundRectPath(x: CanvasRenderingContext2D, w: number, h: number, r: number, cx = 0, cy = 0) {
       x.beginPath();
-      x.moveTo(-w / 2 + r, -h / 2);
-      x.lineTo(w / 2 - r, -h / 2);
-      x.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
-      x.lineTo(w / 2, h / 2 - r);
-      x.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
-      x.lineTo(-w / 2 + r, h / 2);
-      x.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
-      x.lineTo(-w / 2, -h / 2 + r);
-      x.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+      x.moveTo(cx - w / 2 + r, cy - h / 2);
+      x.lineTo(cx + w / 2 - r, cy - h / 2);
+      x.quadraticCurveTo(cx + w / 2, cy - h / 2, cx + w / 2, cy - h / 2 + r);
+      x.lineTo(cx + w / 2, cy + h / 2 - r);
+      x.quadraticCurveTo(cx + w / 2, cy + h / 2, cx + w / 2 - r, cy + h / 2);
+      x.lineTo(cx - w / 2 + r, cy + h / 2);
+      x.quadraticCurveTo(cx - w / 2, cy + h / 2, cx - w / 2, cy + h / 2 - r);
+      x.lineTo(cx - w / 2, cy - h / 2 + r);
+      x.quadraticCurveTo(cx - w / 2, cy - h / 2, cx - w / 2 + r, cy - h / 2);
       x.closePath();
     }
 
-    /* plate textures: cover-fit the photo, warm it, then build the darker far side */
-    function buildTexture(img: HTMLImageElement) {
+    /* plate textures: cover-fit the photo, warm it, then build the darker far side.
+       The bitmap arrives already decoded and resized off the main thread, so
+       this is a handful of cheap TSxTS fills rather than a full JPEG decode. */
+    function buildTexture(img: ImageBitmap) {
       const c = mkc(TS, TS);
       const x = c.getContext("2d");
       if (!x) return null;
 
+      // rounded corners baked into the texture: the per-frame draw is then a
+      // plain transformed drawImage with no clip
+      roundRectPath(x, TS, TS, TS * RING.radius, TS / 2, TS / 2);
+      x.clip();
       x.fillStyle = "#e9efe1";
       x.fillRect(0, 0, TS, TS);
-
-      const scale = Math.max(TS / img.width, TS / img.height);
-      const w = img.width * scale;
-      const h = img.height * scale;
-      x.imageSmoothingQuality = "high";
-      x.drawImage(img, (TS - w) / 2, (TS - h) / 2, w, h);
+      x.drawImage(img, 0, 0, TS, TS);
+      img.close();
 
       // a light warm multiply keeps the greens in the brand family, then a
       // faint bone wash lifts the whole plate toward the page background
@@ -133,59 +138,11 @@ export default function OrbitHeading({
       const y = d.getContext("2d");
       if (y) {
         y.drawImage(c, 0, 0);
-        y.globalCompositeOperation = "multiply";
+        y.globalCompositeOperation = "source-atop";
         y.fillStyle = "rgba(52, 83, 29, 0.55)";
         y.fillRect(0, 0, TS, TS);
       }
       return { front: c, back: d };
-    }
-
-    /** Font size at which `str` inks exactly `targetW` wide. */
-    function sizeForWidth(x: CanvasRenderingContext2D, str: string, font: string, weight: string, targetW: number) {
-      const probe = 100;
-      x.font = `${weight} ${probe}px ${font}`;
-      const m = x.measureText(str);
-      const inkW = (m.actualBoundingBoxRight || m.width) + (m.actualBoundingBoxLeft || 0);
-      return inkW > 0 ? (probe * targetW) / inkW : probe;
-    }
-
-    function drawLine(
-      x: CanvasRenderingContext2D,
-      str: string,
-      font: string,
-      weight: string,
-      size: number,
-      cx: number,
-      baseline: number,
-      color: string
-    ) {
-      x.save();
-      x.font = `${weight} ${size}px ${font}`;
-      x.fillStyle = color;
-      x.textBaseline = "alphabetic";
-      x.textAlign = "center";
-      x.fillText(str, cx, baseline);
-      x.restore();
-    }
-
-    function buildHead(fontFamily: string) {
-      headLayer = mkc(Math.max(1, W), Math.max(1, H));
-      const x = headLayer.getContext("2d");
-      if (!x) return;
-
-      // the headline has to out-measure the ring, or the plates cross the
-      // words instead of orbiting them
-      const targetW = DW * 0.62 * K;
-      const longer = lineOne.length >= lineTwo.length ? lineOne : lineTwo;
-      const size = sizeForWidth(x, longer, fontFamily, "800", targetW);
-
-      x.font = `800 ${size}px ${fontFamily}`;
-      const cap = x.measureText("H").actualBoundingBoxAscent || size * 0.71;
-      const gap = cap * 1.24;
-
-      const blockTop = d2sy(RING.cy) - (cap + gap) / 2;
-      drawLine(x, lineOne, fontFamily, "800", size, d2sx(RING.cx), blockTop + cap, "#b9bdb0");
-      drawLine(x, lineTwo, fontFamily, "800", size, d2sx(RING.cx), blockTop + cap + gap, "#34531d");
     }
 
     function project(p: number[]) {
@@ -214,20 +171,15 @@ export default function OrbitHeading({
       const img = set[i % images.length];
       if (!img) return;
 
-      ctx.save();
       ctx.setTransform((ex * 2) / TS, (ey * 2) / TS, (fx * 2) / TS, (fy * 2) / TS, p0[0], p0[1]);
-      roundRectPath(ctx, TS, TS, TS * RING.radius);
-      ctx.clip();
       ctx.drawImage(img, -TS / 2, -TS / 2, TS, TS);
-      ctx.restore();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     function render(t: number) {
       if (!ctx) return;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, W, H);
-      ctx.imageSmoothingQuality = "high";
+      ctx.imageSmoothingQuality = "medium";
 
       const spin = (t / DUR) * Math.PI * 2;
       const list: { i: number; psi: number; z: number }[] = [];
@@ -238,38 +190,44 @@ export default function OrbitHeading({
         list.push({ i, psi, z: c * U[2] + s * V[2] });
       }
       list.sort((a, b) => a.z - b.z);
-
-      let drawnText = false;
-      for (let i = 0; i < list.length; i++) {
-        if (!drawnText && list[i].z > 0 && headLayer) {
-          ctx.drawImage(headLayer, 0, 0);
-          drawnText = true;
-        }
-        drawTile(list[i].i, list[i].psi);
-      }
-      if (!drawnText && headLayer) ctx.drawImage(headLayer, 0, 0);
+      for (let i = 0; i < list.length; i++) drawTile(list[i].i, list[i].psi);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     function resize() {
       if (!wrap || !cv) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // plates are photographs seen in motion; 1x is plenty and half the fill
+      const dpr = 1;
       W = Math.max(1, Math.round(wrap.clientWidth * dpr));
       H = Math.max(1, Math.round(wrap.clientHeight * dpr));
       cv.width = W;
       cv.height = H;
-      // scale the design frame up as far as the headline (the widest thing)
-      // and the ring's vertical reach allow, so phones get a full-width ring
-      // instead of a 1600px frame shrunk to a thumbnail
-      const fit = Math.min(W, H * DASP) / DW;
-      K = Math.min(fit * 1.6, (0.94 * W) / (DW * 0.62), H / (DH * 0.86));
+      // fit the frame to the height; on narrow screens let the ring run off
+      // the sides rather than shrink the headline below 90% of the width
+      K = Math.min(H / DH, (0.9 * W) / (DW * TEXT_W));
       OX = (W - DW * K) / 2;
       OY = (H - DH * K) / 2;
-      buildHead(fontFamily);
+      // the DOM headline follows the same frame: width and font size in CSS px
+      const textW = (DW * TEXT_W * K) / dpr;
+      wrap.style.setProperty("--orbit-text-w", `${textW}px`);
+      wrap.style.setProperty("--orbit-cy", `${(OY + RING.cy * K) / dpr}px`);
+      // font size at which the longer line inks exactly textW wide, measured
+      // in the real webfont rather than guessed from a character count
+      const h2 = wrap.querySelector("h2");
+      if (h2) {
+        const meter = measure.getContext("2d");
+        if (meter) {
+          meter.font = `800 100px ${getComputedStyle(h2).fontFamily}`;
+          const longer = lineOne.length >= lineTwo.length ? lineOne : lineTwo;
+          const ink = meter.measureText(longer).width || 1;
+          wrap.style.setProperty("--orbit-font", `${(textW * 100) / ink}px`);
+        }
+      }
     }
 
-    let fontFamily = "system-ui, sans-serif";
     let t0 = performance.now();
     let tNow = 0;
+    let lastDraw = 0;
 
     function frame(now: number) {
       if (disposed) return;
@@ -277,9 +235,11 @@ export default function OrbitHeading({
         raf = 0;
         return;
       }
+      raf = requestAnimationFrame(frame);
+      if (now - lastDraw < FRAME_MS) return;
+      lastDraw = now;
       tNow = ((now - t0) / 1000) % DUR;
       render(tNow);
-      raf = requestAnimationFrame(frame);
     }
 
     const io = new IntersectionObserver(
@@ -294,20 +254,20 @@ export default function OrbitHeading({
     );
     io.observe(cv);
 
+    const measure = mkc(1, 1);
+
     const ro = new ResizeObserver(() => {
       resize();
       if (reduce || !raf) render(tNow);
     });
 
     async function start() {
-      fontFamily = getComputedStyle(wrap!).fontFamily || fontFamily;
       try {
         await document.fonts.ready;
       } catch {
         /* the fallback stack still renders */
       }
       if (disposed) return;
-
       resize();
       ro.observe(wrap!);
 
@@ -323,22 +283,40 @@ export default function OrbitHeading({
         }
       };
 
-      images.forEach((src, i) => {
-        const im = new Image();
-        im.decoding = "async";
-        im.onload = () => {
+      // decode + cover-crop each photo off the main thread, one at a time,
+      // so the page never stalls while seven JPEGs are unpacked at once
+      for (const [i, src] of images.entries()) {
+        try {
+          const blob = await fetch(src).then((r) => r.blob());
           if (disposed) return;
-          const tex = buildTexture(im);
+          const full = await createImageBitmap(blob);
+          if (disposed) {
+            full.close();
+            return;
+          }
+          // centre crop to a square, then downscale to the plate size
+          const side = Math.min(full.width, full.height);
+          const bmp = await createImageBitmap(full, (full.width - side) / 2, (full.height - side) / 2, side, side, {
+            resizeWidth: TS,
+            resizeHeight: TS,
+            resizeQuality: "high",
+          });
+          full.close();
+          if (disposed) {
+            bmp.close();
+            return;
+          }
+          const tex = buildTexture(bmp);
           if (tex) {
             front[i] = tex.front;
             back[i] = tex.back;
           }
-          begin();
-          if (reduce) render(0);
-        };
-        im.onerror = () => begin();
-        im.src = src;
-      });
+        } catch {
+          /* a missing photo leaves an empty slot; the ring still turns */
+        }
+        begin();
+        if (reduce) render(0);
+      }
     }
 
     start();
@@ -354,9 +332,26 @@ export default function OrbitHeading({
   return (
     <div ref={wrapRef} className={`relative w-full ${className}`}>
       <canvas ref={canvasRef} aria-hidden style={{ display: "block", width: "100%", height: "100%" }} />
-      {/* the headline is painted into the canvas, so it is repeated here for screen readers */}
-      <h2 className="sr-only">
-        {lineOne} {lineTwo}
+      {/* the headline sits in the clear centre of the ring; width and centre
+          come from the same frame maths that places the plates */}
+      <h2
+        className="pointer-events-none absolute left-1/2 text-center font-extrabold"
+        style={{
+          width: "var(--orbit-text-w, 60%)",
+          top: "var(--orbit-cy, 50%)",
+          transform: "translate(-50%, -50%)",
+          fontSize: "var(--orbit-font, calc(var(--orbit-text-w, 600px) / 11))",
+          lineHeight: 1.12,
+          letterSpacing: "-0.03em",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <span className="block" style={{ color: "#666c5f" }}>
+          {lineOne}
+        </span>
+        <span className="block" style={{ color: "var(--green)" }}>
+          {lineTwo}
+        </span>
       </h2>
     </div>
   );

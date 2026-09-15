@@ -8,7 +8,7 @@ import { NAV, SITE } from "@/lib/site";
 import { scrollToHash } from "../ui/hooks";
 
 /**
- * Fixed header. Transparent over the home hero, then settles onto a frosted
+ * Fixed header. Transparent over the home hero, then settles onto a solid
  * bone bar once the page scrolls past the sentinel that layout.tsx renders
  * at the top of the document. Under md the links move into a full-height
  * sheet behind the hamburger.
@@ -51,11 +51,11 @@ export default function Nav({ logo, logoOnDark }: { logo: ReactNode; logoOnDark:
 
   return (
     <header
-      className="fixed inset-x-0 top-0 z-[70] transition-[background-color,box-shadow,backdrop-filter] duration-500"
+      className="fixed inset-x-0 top-0 z-[70] transition-[background-color,box-shadow] duration-500"
       style={{
-        background: transparent ? "transparent" : "rgba(248, 246, 239, 0.86)",
-        backdropFilter: transparent ? "none" : "blur(16px) saturate(140%)",
-        WebkitBackdropFilter: transparent ? "none" : "blur(16px) saturate(140%)",
+        // a near-solid bar rather than backdrop blur: blur over a scrolling page
+        // is re-rendered every frame and is the first thing to stutter
+        background: transparent ? "transparent" : "rgba(248, 246, 239, 0.96)",
         boxShadow: transparent ? "none" : "0 1px 0 rgba(34,38,31,0.06), 0 12px 40px -24px rgba(52,83,29,0.25)",
         color: transparent ? "var(--on-dark)" : "var(--ink)",
       }}

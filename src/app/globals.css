@@ -40,9 +40,11 @@
   --r-tile: 18px;
   --r-input: 14px;
 
-  --shadow-soft: 0 1px 2px rgba(34, 38, 31, 0.04), 0 10px 30px -12px rgba(52, 83, 29, 0.18);
-  --shadow-lift: 0 2px 4px rgba(34, 38, 31, 0.05), 0 24px 50px -18px rgba(52, 83, 29, 0.32);
-  --shadow-modal: 0 40px 100px -30px rgba(33, 54, 18, 0.55);
+  /* blur radii kept modest: large blurred shadows are the priciest thing to
+     rasterize on integrated GPUs */
+  --shadow-soft: 0 1px 2px rgba(34, 38, 31, 0.04), 0 8px 20px -10px rgba(52, 83, 29, 0.2);
+  --shadow-lift: 0 2px 4px rgba(34, 38, 31, 0.05), 0 18px 30px -14px rgba(52, 83, 29, 0.34);
+  --shadow-modal: 0 30px 60px -24px rgba(33, 54, 18, 0.55);
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -71,7 +73,8 @@
 }
 
 html {
-  overflow-x: hidden;
+  /* clip, not hidden: no extra scroll container, sticky keeps working */
+  overflow-x: clip;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -79,8 +82,17 @@ body {
   background: var(--bone);
   color: var(--ink);
   font-family: var(--font-sans);
-  overflow-x: hidden;
   text-rendering: optimizeLegibility;
+}
+
+/* Lenis drives window scroll; native smooth scrolling would fight it */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
 }
 
 ::selection {
@@ -146,7 +158,6 @@ body {
     background-color 0.3s ease,
     color 0.3s ease,
     border-color 0.3s ease;
-  will-change: transform;
 }
 
 .btn:active {
@@ -221,11 +232,9 @@ body {
 }
 
 .btn-ghost {
-  background: rgba(255, 253, 248, 0.08);
+  background: rgba(24, 38, 12, 0.35);
   color: var(--on-dark);
   border: 1px solid rgba(248, 246, 239, 0.28);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .btn-ghost:hover {
@@ -334,6 +343,7 @@ body {
   display: flex;
   width: max-content;
   animation: ticker var(--ticker-duration, 60s) linear infinite;
+  will-change: transform;
 }
 
 .ticker-wrap:hover .ticker,

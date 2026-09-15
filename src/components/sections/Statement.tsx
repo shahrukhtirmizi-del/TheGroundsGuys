@@ -18,14 +18,13 @@ const PLATES = [
 export default function Statement() {
   return (
     <section className="relative overflow-hidden pt-4 md:pt-2" aria-labelledby="statement-h">
-      <div className="mx-auto max-w-[1280px] px-2 md:px-8">
-        <OrbitHeading
-          lineOne="Rooted in Davenport."
-          lineTwo="Grown with care."
-          images={PLATES}
-          className="aspect-square sm:aspect-[16/10] md:aspect-[16/9]"
-        />
-      </div>
+      {/* full-bleed so the ring can run wider than the content column */}
+      <OrbitHeading
+        lineOne="Rooted in Davenport."
+        lineTwo="Grown with care."
+        images={PLATES}
+        className="aspect-square max-h-[760px] sm:aspect-[16/10] md:aspect-[16/9]"
+      />
       <div className="mx-auto max-w-[1280px] px-5 pb-20 md:px-8 md:pb-28">
         <Reveal className="mx-auto max-w-[720px] text-center">
           <p id="statement-h" className="lead text-[var(--ink-70)] md:text-[21px]">

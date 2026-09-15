@@ -5,8 +5,10 @@ import * as maplibregl from "maplibre-gl";
 import type { Map as MLMap, Marker, Popup } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { SERVICE_POLYGON, TOWNS } from "@/lib/site";
+import { MAP_STYLE } from "@/lib/map-style";
 
 export type MapHandle = {
+  zoomBy: (delta: number) => void;
   focusTown: (name: string) => void;
   highlight: (name: string | null) => void;
   showCheck: (lat: number, lng: number, inside: boolean, label: string) => void;
@@ -14,39 +16,8 @@ export type MapHandle = {
 };
 
 const CENTER: [number, number] = [-81.52, 28.22]; // [lng, lat]
-const STYLE = "https://tiles.openfreemap.org/styles/positron";
-
 // the worker module is copied into /public by scripts/copy-maplibre-worker.mjs
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
-
-/** Recolors the base style into the site palette once it has loaded. */
-function tintStyle(map: MLMap) {
-  const style = map.getStyle();
-  if (!style?.layers) return;
-  for (const layer of style.layers) {
-    const id = layer.id.toLowerCase();
-    try {
-      if (layer.type === "background") {
-        map.setPaintProperty(layer.id, "background-color", "#f1eee4");
-      } else if (layer.type === "fill") {
-        if (id.includes("water")) map.setPaintProperty(layer.id, "fill-color", "#d3dccb");
-        else if (/park|wood|grass|green|landcover|landuse/.test(id)) map.setPaintProperty(layer.id, "fill-color", "#e3e9d6");
-        else if (id.includes("building")) map.setPaintProperty(layer.id, "fill-color", "#e6e2d6");
-        else if (/residential|cemetery|hospital|school|stadium|pitch|sand|beach|glacier/.test(id)) map.setPaintProperty(layer.id, "fill-color", "#ede9df");
-      } else if (layer.type === "line") {
-        if (id.includes("water")) map.setPaintProperty(layer.id, "line-color", "#c7d2bd");
-        else if (id.includes("boundary")) map.setPaintProperty(layer.id, "line-color", "#b9bdb0");
-        else if (/motorway|trunk/.test(id)) map.setPaintProperty(layer.id, "line-color", "#fffdf8");
-        else map.setPaintProperty(layer.id, "line-color", "#fbfaf5");
-      } else if (layer.type === "symbol") {
-        map.setPaintProperty(layer.id, "text-color", "#5c6255");
-        map.setPaintProperty(layer.id, "text-halo-color", "rgba(248,246,239,0.9)");
-      }
-    } catch {
-      /* a paint property the layer does not carry; skip it */
-    }
-  }
-}
 
 function pinElement(extra = "") {
   const el = document.createElement("div");
@@ -57,12 +28,16 @@ function pinElement(extra = "") {
 
 /**
  * The service-area map itself. MapLibre over OpenFreeMap vector tiles (no
- * key, no limits), recolored into the palette after load. The service
+ * key, no limits) with the small brand style in lib/map-style.ts. The service
  * boundary is a soft green fill; each town is a pin with a hover / click
  * popup. Exposes a handle so the address-check form can fly to a result and
- * drop a pin.
+ * drop a pin. ServiceArea mounts this only after the visitor interacts with
+ * the pre-rendered StaticMap, so WebGL setup never lands mid-scroll.
  */
-const MapView = forwardRef<MapHandle, { onTownActive?: (name: string | null) => void }>(function MapView({ onTownActive }, ref) {
+const MapView = forwardRef<MapHandle, { onTownActive?: (name: string | null) => void; onReady?: () => void }>(function MapView(
+  { onTownActive, onReady },
+  ref
+) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<MLMap | null>(null);
   const markers = useRef<Map<string, { marker: Marker; popup: Popup; el: HTMLDivElement }>>(new Map());
@@ -73,7 +48,7 @@ const MapView = forwardRef<MapHandle, { onTownActive?: (name: string | null) => 
 
     const m = new maplibregl.Map({
       container: el.current,
-      style: STYLE,
+      style: MAP_STYLE,
       center: CENTER,
       zoom: 9.4,
       minZoom: 7,
@@ -91,8 +66,6 @@ const MapView = forwardRef<MapHandle, { onTownActive?: (name: string | null) => 
     m.touchZoomRotate.disableRotation();
 
     m.on("load", () => {
-      tintStyle(m);
-
       // the boundary, drawn generously around the four towns
       const ring = [...SERVICE_POLYGON, SERVICE_POLYGON[0]].map(([lat, lng]) => [lng, lat]);
       m.addSource("service-area", {
@@ -114,9 +87,9 @@ const MapView = forwardRef<MapHandle, { onTownActive?: (name: string | null) => 
 
       for (const t of TOWNS) {
         const pin = pinElement();
-        const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14, className: "gg-popup" }).setHTML(
-          `<strong style="display:block;font-weight:700">${t.name}, FL</strong><span style="color:#34531d">We service this area</span>`
-        );
+        const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14, className: "gg-popup" })
+          .setLngLat([t.lng, t.lat])
+          .setHTML(`<strong style="display:block;font-weight:700">${t.name}, FL</strong><span style="color:#34531d">We service this area</span>`);
         const marker = new maplibregl.Marker({ element: pin, anchor: "center" }).setLngLat([t.lng, t.lat]).setPopup(popup).addTo(m);
         pin.setAttribute("role", "button");
         pin.setAttribute("tabindex", "0");
@@ -139,6 +112,7 @@ const MapView = forwardRef<MapHandle, { onTownActive?: (name: string | null) => 
         });
         markers.current.set(t.name, { marker, popup, el: pin });
       }
+      onReady?.();
     });
 
     const store = markers.current;
@@ -147,9 +121,12 @@ const MapView = forwardRef<MapHandle, { onTownActive?: (name: string | null) => 
       m.remove();
       map.current = null;
     };
-  }, [onTownActive]);
+  }, [onTownActive, onReady]);
 
   useImperativeHandle(ref, () => ({
+    zoomBy(delta) {
+      map.current?.zoomTo((map.current?.getZoom() ?? 9.4) + delta, { duration: 500 });
+    },
     highlight(name) {
       markers.current.forEach((v, n) => v.el.setAttribute("data-active", String(n === name)));
     },
@@ -167,7 +144,7 @@ const MapView = forwardRef<MapHandle, { onTownActive?: (name: string | null) => 
       checkMarker.current?.remove();
       const pin = pinElement("gg-pin-check");
       pin.setAttribute("data-out", String(!inside));
-      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14, className: "gg-popup" }).setHTML(
+      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14, className: "gg-popup" }).setLngLat([lng, lat]).setHTML(
         inside
           ? `<strong style="display:block;font-weight:700">You're covered</strong><span style="color:#34531d">We service this address</span>`
           : `<strong style="display:block;font-weight:700">Just outside our area</strong><span style="color:#666c5f">Call us, we may still be able to help</span>`
