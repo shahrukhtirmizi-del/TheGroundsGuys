@@ -1,0 +1,612 @@
+@import "tailwindcss";
+
+/* --------------------------------------------------------------------------
+   Brand tokens. Locked to The Grounds Guys palette: Thatch Green #34531D and
+   Energy Yellow #F6D859. Large dark areas use the deepened green; the true
+   hex is kept for buttons, the logo and accents.
+   -------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  --green: #34531d;
+  --green-deep: #2a4418;
+  --green-deeper: #213612;
+  --green-soft: #e9efe1;
+  --green-tint: #f1f5ea;
+
+  --yellow: #f6d859;
+  --yellow-muted: #e6cb57;
+  --yellow-soft: #fbf1c2;
+
+  --bone: #f8f6ef;
+  --bone-2: #f1eee4;
+  --white: #fffdf8;
+
+  --charcoal: #22261f;
+  --ink: #22261f;
+  --ink-70: #4a5043;
+  --ink-55: #666c5f;
+  --ink-40: #8c9185;
+  --line: rgba(34, 38, 31, 0.08);
+  --line-strong: rgba(34, 38, 31, 0.16);
+
+  --on-dark: #f8f6ef;
+  --on-dark-70: rgba(248, 246, 239, 0.72);
+  --on-dark-50: rgba(248, 246, 239, 0.5);
+  --line-dark: rgba(248, 246, 239, 0.12);
+
+  /* one radius system: cards and image frames 24, tiles 18, inputs 14, buttons pill */
+  --r-card: 24px;
+  --r-tile: 18px;
+  --r-input: 14px;
+
+  --shadow-soft: 0 1px 2px rgba(34, 38, 31, 0.04), 0 10px 30px -12px rgba(52, 83, 29, 0.18);
+  --shadow-lift: 0 2px 4px rgba(34, 38, 31, 0.05), 0 24px 50px -18px rgba(52, 83, 29, 0.32);
+  --shadow-modal: 0 40px 100px -30px rgba(33, 54, 18, 0.55);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@theme inline {
+  --color-green: var(--green);
+  --color-green-deep: var(--green-deep);
+  --color-green-deeper: var(--green-deeper);
+  --color-green-soft: var(--green-soft);
+  --color-green-tint: var(--green-tint);
+  --color-yellow: var(--yellow);
+  --color-yellow-muted: var(--yellow-muted);
+  --color-yellow-soft: var(--yellow-soft);
+  --color-bone: var(--bone);
+  --color-bone-2: var(--bone-2);
+  --color-cream: var(--white);
+  --color-charcoal: var(--charcoal);
+  --color-ink: var(--ink);
+  --color-ink-70: var(--ink-70);
+  --color-ink-55: var(--ink-55);
+  --color-ink-40: var(--ink-40);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --radius-card: var(--r-card);
+  --radius-tile: var(--r-tile);
+  --radius-input: var(--r-input);
+}
+
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bone);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--yellow);
+  color: var(--green-deeper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* --------------------------------------------------------------------------
+   Type scale helpers
+   -------------------------------------------------------------------------- */
+.display {
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  font-weight: 700;
+}
+
+.h-section {
+  font-size: clamp(34px, 5vw, 60px);
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+  font-weight: 700;
+}
+
+.lead {
+  font-size: clamp(16px, 1.2vw, 19px);
+  line-height: 1.6;
+  color: var(--ink-55);
+}
+
+.em {
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons. Pill only. Lift with a tinted shadow on hover; the primary carries
+   a shine sweep that rides across once, transform-only.
+   -------------------------------------------------------------------------- */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 15px 26px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    transform 0.45s var(--ease-out),
+    box-shadow 0.45s var(--ease-out),
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
+  will-change: transform;
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+  transform: none;
+}
+
+.btn-primary {
+  overflow: hidden;
+  background: var(--green);
+  color: var(--on-dark);
+  box-shadow: var(--shadow-soft);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+  background: #3b5f21;
+}
+
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-130%) skewX(-18deg);
+  background: linear-gradient(
+    90deg,
+    transparent 20%,
+    rgba(246, 216, 89, 0.28) 45%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(246, 216, 89, 0.28) 55%,
+    transparent 80%
+  );
+  pointer-events: none;
+}
+
+.btn-primary:hover::after {
+  transform: translateX(130%) skewX(-18deg);
+  transition: transform 0.9s var(--ease-out);
+}
+
+.btn-yellow {
+  overflow: hidden;
+  background: var(--yellow);
+  color: var(--green-deeper);
+  box-shadow: var(--shadow-soft);
+}
+
+.btn-yellow:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+  background: #f9df6f;
+}
+
+.btn-yellow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-130%) skewX(-18deg);
+  background: linear-gradient(90deg, transparent 25%, rgba(255, 255, 255, 0.65) 50%, transparent 75%);
+  pointer-events: none;
+}
+
+.btn-yellow:hover::after {
+  transform: translateX(130%) skewX(-18deg);
+  transition: transform 0.9s var(--ease-out);
+}
+
+.btn-ghost {
+  background: rgba(255, 253, 248, 0.08);
+  color: var(--on-dark);
+  border: 1px solid rgba(248, 246, 239, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.btn-ghost:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 253, 248, 0.16);
+  border-color: rgba(248, 246, 239, 0.5);
+}
+
+.btn-secondary {
+  background: var(--white);
+  color: var(--green-deeper);
+  border: 1px solid var(--line-strong);
+}
+
+.btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft);
+  border-color: var(--green);
+}
+
+/* --------------------------------------------------------------------------
+   Nav links: the underline draws itself in from the left on hover.
+   -------------------------------------------------------------------------- */
+.nav-link {
+  position: relative;
+  white-space: nowrap;
+  padding: 6px 2px;
+  font-size: 14.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  transition: color 0.3s ease;
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--yellow-muted);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.45s var(--ease-out);
+}
+
+.nav-link:hover::after,
+.nav-link[aria-current="true"]::after {
+  transform: scaleX(1);
+}
+
+/* --------------------------------------------------------------------------
+   Reveal on scroll. Elements start slightly low and transparent; the
+   IntersectionObserver in Reveal.tsx flips data-in. Stagger delay comes from
+   an inline --d. Reduced motion shows everything immediately.
+   -------------------------------------------------------------------------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.9s var(--ease-out),
+    transform 0.9s var(--ease-out);
+  transition-delay: var(--d, 0ms);
+}
+
+.reveal[data-in="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* --------------------------------------------------------------------------
+   Scroll-driven word brightening (the guarantee statement). A CSS
+   scroll-driven animation: costs nothing per frame and degrades to plain text
+   where animation-timeline is unsupported.
+   -------------------------------------------------------------------------- */
+.sw > span {
+  display: inline-block;
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .sw > span {
+      opacity: 0.18;
+      animation: sw-word linear both;
+      animation-timeline: view();
+      animation-range-start: entry calc(22% + min(var(--i, 0) * 0.85%, 28%));
+      animation-range-end: exit calc(60% - min(var(--i, 0) * 0.3%, 12%));
+    }
+  }
+}
+
+@keyframes sw-word {
+  0% { opacity: 0.18; }
+  35% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0.18; }
+}
+
+/* --------------------------------------------------------------------------
+   Testimonial ticker. Two copies of the track sit side by side; the track
+   translates by exactly one copy width, so the loop is seamless. Pauses on
+   hover and focus.
+   -------------------------------------------------------------------------- */
+.ticker {
+  display: flex;
+  width: max-content;
+  animation: ticker var(--ticker-duration, 60s) linear infinite;
+}
+
+.ticker-wrap:hover .ticker,
+.ticker-wrap:focus-within .ticker {
+  animation-play-state: paused;
+}
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* --------------------------------------------------------------------------
+   Stars fill in one at a time once their block is in view.
+   -------------------------------------------------------------------------- */
+.star {
+  opacity: 0.18;
+  transform: scale(0.7);
+  transition:
+    opacity 0.4s var(--ease-out),
+    transform 0.5s var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 110ms);
+}
+
+[data-in="true"] .star {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* --------------------------------------------------------------------------
+   Modal and dialog motion
+   -------------------------------------------------------------------------- */
+.modal-backdrop {
+  animation: fade-in 0.35s var(--ease-out) both;
+}
+
+.modal-panel {
+  animation: pop-in 0.45s var(--ease-out) both;
+}
+
+.modal-backdrop[data-closing="true"] {
+  animation: fade-out 0.28s ease both;
+}
+
+.modal-panel[data-closing="true"] {
+  animation: pop-out 0.28s ease both;
+}
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.965); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(10px) scale(0.975); }
+}
+
+/* --------------------------------------------------------------------------
+   Form fields
+   -------------------------------------------------------------------------- */
+.field {
+  width: 100%;
+  border-radius: var(--r-input);
+  border: 1px solid var(--line-strong);
+  background: var(--white);
+  color: var(--ink);
+  padding: 15px 16px;
+  font-size: 15.5px;
+  line-height: 1.3;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    background-color 0.25s ease;
+}
+
+.field::placeholder {
+  color: var(--ink-40);
+}
+
+.field:hover {
+  border-color: rgba(52, 83, 29, 0.4);
+}
+
+.field:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 4px rgba(52, 83, 29, 0.14);
+}
+
+.field[aria-invalid="true"] {
+  border-color: #b3462a;
+  box-shadow: 0 0 0 4px rgba(179, 70, 42, 0.12);
+}
+
+.field-error {
+  color: #a13c22;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+/* --------------------------------------------------------------------------
+   Accordion
+   -------------------------------------------------------------------------- */
+.acc-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.5s var(--ease-out);
+}
+
+.acc-body[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+
+.acc-body > div {
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Before / After slider
+   -------------------------------------------------------------------------- */
+.ba-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: ew-resize;
+}
+
+.ba-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 56px;
+  height: 100%;
+  background: transparent;
+  border: 0;
+}
+
+.ba-range::-moz-range-thumb {
+  width: 56px;
+  height: 100%;
+  background: transparent;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Map: MapLibre controls and popups restyled to the palette. The base map
+   layers themselves are recolored in MapView.tsx after the style loads.
+   -------------------------------------------------------------------------- */
+.gg-map.maplibregl-map {
+  background: #f1eee4;
+  font-family: var(--font-sans);
+}
+
+.gg-map .maplibregl-ctrl-attrib {
+  background: rgba(248, 246, 239, 0.85);
+  color: var(--ink-55);
+  font-size: 10px;
+  border-top-left-radius: 8px;
+}
+
+.gg-map .maplibregl-ctrl-attrib a {
+  color: var(--green);
+}
+
+.gg-map .maplibregl-ctrl-group {
+  border: 0;
+  box-shadow: var(--shadow-soft);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--white);
+}
+
+.gg-map .maplibregl-ctrl-group button {
+  background: var(--white);
+  width: 34px;
+  height: 34px;
+}
+
+.gg-map .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--line);
+}
+
+.gg-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: sepia(1) saturate(3) hue-rotate(50deg) brightness(0.55);
+}
+
+.gg-popup .maplibregl-popup-content {
+  border-radius: 14px;
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: var(--shadow-lift);
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.4;
+  font-family: var(--font-sans);
+}
+
+.gg-popup .maplibregl-popup-tip {
+  border-top-color: var(--white);
+  border-bottom-color: var(--white);
+}
+
+.gg-pin {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+.gg-pin > span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--green);
+  border: 3px solid var(--white);
+  box-shadow:
+    0 0 0 2px var(--green),
+    0 8px 20px -6px rgba(33, 54, 18, 0.6);
+  transition: transform 0.3s var(--ease-out);
+}
+
+.gg-pin:hover > span,
+.gg-pin[data-active="true"] > span {
+  transform: scale(1.3);
+  background: var(--yellow);
+}
+
+.gg-pin-check > span {
+  background: var(--yellow);
+  animation: pin-pop 0.6s var(--ease-out) both;
+}
+
+.gg-pin-check[data-out="true"] > span {
+  background: #b3462a;
+  box-shadow:
+    0 0 0 2px #b3462a,
+    0 8px 20px -6px rgba(33, 54, 18, 0.6);
+}
+
+@keyframes pin-pop {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.35); }
+  100% { transform: scale(1.15); }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion: everything settles instantly.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+
+  .sw > span,
+  .star {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .ticker {
+    animation: none;
+  }
+}
