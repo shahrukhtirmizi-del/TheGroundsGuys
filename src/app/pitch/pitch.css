@@ -1,0 +1,239 @@
+/* --------------------------------------------------------------------------
+   /pitch: keynote-style deck. Scoped under .pitch-root so nothing here leaks
+   into the marketing site. Two themes alternate slide to slide; each slide
+   carries its own variables so text stays correct mid-crossfade.
+   -------------------------------------------------------------------------- */
+.pitch-root {
+  --p-green: #3f5f2a;
+  --p-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: var(--font-pitch-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pitch-root [data-theme="dark"] {
+  --p-bg: #1c1c1a;
+  --p-fg: #ffffff;
+  --p-muted: #bfbdb2;
+  --p-gold: #f0ce6e;
+  --p-line: rgba(255, 255, 255, 0.12);
+  --p-line-strong: rgba(255, 255, 255, 0.22);
+  --p-card: rgba(255, 255, 255, 0.03);
+  color-scheme: dark;
+}
+
+.pitch-root [data-theme="light"] {
+  --p-bg: #f7f4ec;
+  --p-fg: #222220;
+  --p-muted: #6e6c63;
+  --p-gold: #b8912a;
+  --p-line: rgba(34, 34, 32, 0.1);
+  --p-line-strong: rgba(34, 34, 32, 0.2);
+  --p-card: rgba(34, 34, 32, 0.03);
+  color-scheme: light;
+}
+
+.pitch-root ::selection {
+  background: var(--p-gold);
+  color: #1c1c1a;
+}
+
+.pitch-root :focus-visible {
+  outline: 2px solid var(--p-gold);
+  outline-offset: 3px;
+}
+
+.pitch-mono {
+  font-family: var(--font-pitch-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(11px, 0.85vw, 13px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.pitch-headline {
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.pitch-lead {
+  font-size: clamp(17px, 1.5vw, 23px);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+
+/* Slide stage: every slide is mounted, only the current one is visible.
+   Neighbours sit a little to the side so the change reads as a slide, not a
+   hard cut. The stage background follows the active slide. */
+.pitch-stage {
+  background: var(--p-bg);
+  transition: background-color 0.42s var(--p-ease);
+}
+
+.pitch-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--p-bg);
+  color: var(--p-fg);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate3d(28px, 0, 0);
+  transition:
+    opacity 0.38s var(--p-ease),
+    transform 0.42s var(--p-ease),
+    visibility 0s linear 0.42s;
+  will-change: opacity, transform;
+  pointer-events: none;
+}
+
+.pitch-slide[data-pos="before"] {
+  transform: translate3d(-28px, 0, 0);
+}
+
+.pitch-slide[data-pos="active"] {
+  opacity: 1;
+  visibility: visible;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 0.38s var(--p-ease),
+    transform 0.42s var(--p-ease),
+    visibility 0s;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+/* Staggered reveals inside a slide. Elements are hidden until the slide is
+   active, then fade and rise in order using --i. */
+.pitch-reveal {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition:
+    opacity 0.55s var(--p-ease),
+    transform 0.6s var(--p-ease);
+  transition-delay: calc(var(--d, 0.15s) + var(--i, 0) * var(--step, 0.11s));
+}
+
+[data-pos="active"] .pitch-reveal {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Bars grow from the floor. */
+.pitch-bar {
+  transform-origin: bottom;
+  transform: scaleY(0);
+  transition: transform 1.1s var(--p-ease);
+  transition-delay: var(--d, 0.3s);
+}
+
+[data-pos="active"] .pitch-bar {
+  transform: scaleY(1);
+}
+
+/* Checklist ticks pop in one after another. */
+.pitch-tick {
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 0.3s var(--p-ease),
+    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition-delay: calc(var(--d, 0.3s) + var(--i, 0) * 0.1s);
+}
+
+[data-pos="active"] .pitch-tick {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.pitch-tick-row {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  transition-delay: calc(var(--d, 0.3s) + var(--i, 0) * 0.1s);
+}
+
+[data-pos="active"] .pitch-tick-row {
+  opacity: 1;
+}
+
+/* Live dot beside the demo cue. */
+@keyframes pitch-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(63, 95, 42, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(63, 95, 42, 0);
+  }
+}
+
+.pitch-live {
+  animation: pitch-pulse 1.8s ease-out infinite;
+}
+
+/* First-slide navigation hint: the arrow nudges right. */
+@keyframes pitch-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+}
+
+.pitch-nudge {
+  display: inline-block;
+  animation: pitch-nudge 1.6s ease-in-out infinite;
+}
+
+/* Bottom chrome sits on a soft fade so scrolled content on small screens
+   never collides with the dots and counter. */
+.pitch-chrome {
+  background: linear-gradient(to top, var(--p-bg) 30%, transparent);
+  transition: background-color 0.42s var(--p-ease);
+}
+
+/* Progress dots and counter. */
+.pitch-dot {
+  height: 4px;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--p-muted);
+  opacity: 0.45;
+  transition:
+    width 0.35s var(--p-ease),
+    opacity 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.pitch-dot[data-active="true"] {
+  width: 22px;
+  opacity: 1;
+  background: var(--p-gold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pitch-stage,
+  .pitch-slide,
+  .pitch-reveal,
+  .pitch-bar,
+  .pitch-tick,
+  .pitch-tick-row,
+  .pitch-dot {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+  .pitch-live,
+  .pitch-nudge {
+    animation: none;
+  }
+}
